@@ -8,8 +8,8 @@ import (
 )
 
 type Session struct {
-	ID       string `json:"id"`
-	User     any 	`json:"user"`
+	ID       string    `json:"id"`
+	User     any       `json:"user"`
 	ExpireAt time.Time `json:"expire_at"`
 }
 
