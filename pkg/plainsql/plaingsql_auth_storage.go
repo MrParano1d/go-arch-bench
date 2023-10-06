@@ -42,7 +42,7 @@ func NewSqlAuthStorage(client *sql.DB) *SqlAuthStorage {
 func (s *SqlAuthStorage) Login(ctx context.Context, username string, password string) (*User, error) {
 	var user User
 
-	err := s.client.QueryRowContext(ctx, "SELECT id, username, password FROM users WHERE username = $1 AND password = $2", username, password).Scan(&user.id, &user.username, &user.password)
+	err := s.client.QueryRowContext(ctx, "SELECT id, username, password FROM goarch.users WHERE username = $1 AND password = $2", username, password).Scan(&user.id, &user.username, &user.password)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (s *SqlAuthStorage) Login(ctx context.Context, username string, password st
 }
 
 func (s *SqlAuthStorage) Register(ctx context.Context, user *User) (*User, error) {
-	_, err := s.client.ExecContext(ctx, "INSERT INTO users (username, password) VALUES ($1, $2)", user.username, user.password)
+	_, err := s.client.ExecContext(ctx, "INSERT INTO goarch.users (username, password) VALUES ($1, $2)", user.username, user.password)
 	if err != nil {
 		return nil, err
 	}

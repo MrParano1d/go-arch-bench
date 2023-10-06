@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/mrparano1d/archs-go/pkg/auth"
+	"github.com/mrparano1d/archs-go/pkg/books"
 	"github.com/mrparano1d/archs-go/pkg/session"
 )
 
@@ -27,11 +27,22 @@ func (u *User) SetID(id string) {
 	u.Identifier = id
 }
 
+type Book struct {
+	BookID   string `json:"id"`
+	Title    string `json:"title"`
+	AuthorID string `json:"author_id"`
+}
+
+func (b *Book) ID() string {
+	return b.BookID
+}
+
 func Serve() error {
 	sessStorage := session.NewInMemoryStorage()
 	authStorage := auth.NewAuthMemoryStorage[*User]()
+	booksStorage := books.NewBooksMemoryStorage[*Book]()
 
-	server := New[*User](sessStorage, authStorage, func(r chi.Router) {})
+	server := New[*User](sessStorage, authStorage, booksStorage)
 
 	log.Println("Listening on :8080")
 	return http.ListenAndServe(":8080", server)

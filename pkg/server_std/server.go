@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/mrparano1d/archs-go/pkg/auth"
+	"github.com/mrparano1d/archs-go/pkg/books"
 	"github.com/mrparano1d/archs-go/pkg/session"
 	"go.uber.org/zap"
 	"moul.io/chizap"
@@ -20,7 +21,7 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func New[U auth.UserIdentifiable](sessionStorage session.SessionStorage, authStorage auth.AuthStorage[U], routeRegister RouterRegister) chi.Router {
+func New[U auth.UserIdentifiable, B any](sessionStorage session.SessionStorage, authStorage auth.AuthStorage[U], bookStorage books.BooksStorage[B]) chi.Router {
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -81,7 +82,87 @@ func New[U auth.UserIdentifiable](sessionStorage session.SessionStorage, authSto
 	r.Group(func(r chi.Router) {
 		r.Use(AuthMiddleware(sessionManager))
 
-		routeRegister(r)
+		r.Get("/books", func(w http.ResponseWriter, r *http.Request) {
+			books, err := bookStorage.FetchAll()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			json.ConfigStd.NewEncoder(w).Encode(books)
+		})
+
+		r.Post("/books", func(w http.ResponseWriter, r *http.Request) {
+			var book B
+
+			err := json.ConfigStd.NewDecoder(r.Body).Decode(&book)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			book, err = bookStorage.Create(book)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusCreated)
+			w.Header().Set("Content-Type", "application/json")
+			json.ConfigStd.NewEncoder(w).Encode(book)
+		})
+
+		r.Route("/books/{id}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				id := chi.URLParam(r, "id")
+
+				book, err := bookStorage.Fetch(id)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				json.ConfigStd.NewEncoder(w).Encode(book)
+			})
+
+			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
+				id := chi.URLParam(r, "id")
+
+				var book B
+
+				err = json.ConfigStd.NewDecoder(r.Body).Decode(&book)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				book, err = bookStorage.Update(id, book)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				json.ConfigStd.NewEncoder(w).Encode(book)
+			})
+
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				id := chi.URLParam(r, "id")
+
+				err = bookStorage.Delete(id)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+			})
+		})
 	})
 
 	return r

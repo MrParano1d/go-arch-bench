@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"sync"
 )
 
@@ -20,7 +21,11 @@ func NewInMemoryStorage() *InMemoryStorage {
 func (s *InMemoryStorage) Read(ctx context.Context, key string) (any, error) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return s.data[key], nil
+	session, ok := s.data[key]
+	if !ok {
+		return nil, ErrSessionNotFound
+	}
+	return session, nil
 }
 
 func (s *InMemoryStorage) Write(ctx context.Context, key string, value any) error {
@@ -29,3 +34,5 @@ func (s *InMemoryStorage) Write(ctx context.Context, key string, value any) erro
 	s.data[key] = value
 	return nil
 }
+
+var ErrSessionNotFound = errors.New("session not found")
